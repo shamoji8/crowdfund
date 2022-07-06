@@ -23,7 +23,7 @@ pub mod pallet {
 		Currency, ExistenceRequirement, ReservableCurrency, WithdrawReasons,
 	}};
 
-	use sp_runtime::traits::{Zero, Saturating, Hash, AccountIdConversion};
+	use sp_runtime::traits::{Zero, One, Saturating, Hash, AccountIdConversion};
 
 	use scale_info::TypeInfo;
 
@@ -40,6 +40,8 @@ pub mod pallet {
 		type SubmissionDeposit: Get<BalanceOf<Self>>;
 
 		type MinContribution: Get<BalanceOf<Self>>;
+
+		type MinVotenum: Get<BalanceOf<Self>>;
 
 		type RetirementPeriod: Get<Self::BlockNumber>;
 	}
@@ -69,6 +71,8 @@ pub mod pallet {
 		end: BlockNumber,
 		/// Upper bound on `raised`
 		goal: Balance,
+		/// The total amount voted
+		totalvote: Balance,
 	}
 
 	#[pallet::storage]
@@ -85,6 +89,12 @@ pub mod pallet {
 	/// #[pallet::metadata(BalanceOf<T> = "Balance", AccountId<T> = "AccountId", BlockNumber<T> = "BlockNumber")]
 	pub enum Event<T: Config> {
 		Created(FundIndex, <T as frame_system::Config>::BlockNumber),
+		Voted(
+			<T as frame_system::Config>::AccountId,
+			FundIndex,
+			BalanceOf<T>,
+			<T as frame_system::Config>::BlockNumber,
+		),
 		Contributed(
 			<T as frame_system::Config>::AccountId,
 			FundIndex,
@@ -128,6 +138,10 @@ pub mod pallet {
 		FundNotRetired,
 		/// Cannot dispense funds from an unsuccessful fund
 		UnsuccessfulFund,
+		/// You already voted to a fund
+		Alreadyvoted,
+		/// You cant contribute beacuse of it doesnt meet number of votes
+		CannotContribution,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -162,7 +176,7 @@ pub mod pallet {
 
 			<Funds<T>>::insert(
 				index,
-				FundInfo { beneficiary, deposit, raised: Zero::zero(), end, goal },
+				FundInfo { beneficiary, deposit, raised: Zero::zero(), end, goal, totalvote: Zero::zero() },
 			);
 
 			Self::deposit_event(Event::Created(index, now));
@@ -179,6 +193,7 @@ pub mod pallet {
 
 			ensure!(value >= T::MinContribution::get(), Error::<T>::ContributionTooSmall);
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
+			ensure!(fund.totalvote >= T::MinVotenum::get(), Error::<T>::CannotContribution);
 
 			// Make sure crowdfund has not ended
 			let now = <frame_system::Pallet<T>>::block_number();
@@ -199,6 +214,30 @@ pub mod pallet {
 			Self::contribution_put(index, &who, &balance);
 
 			Self::deposit_event(Event::Contributed(who, index, balance, now));
+
+			Ok(().into())
+		}
+
+		// ToDo : vote の期限の設定
+		// ensure!(fund.totalvote >= T::MinVotenum::get(), Error::<T>::CannotContribution);
+		#[pallet::weight(10_000)]
+		pub fn vote(
+			origin: OriginFor<T>,
+			index: FundIndex,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
+			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(fund.end < now, Error::<T>::FundStillActive);
+
+			let balance = Self::vote_get(index, &who);
+			ensure!(balance != Zero::zero(), Error::<T>::Alreadyvoted);
+			fund.totalvote += One::one();
+			
+			Self::vote_put(index, &who);
+
+			Self::deposit_event(Event::Voted(who, index, fund.totalvote, now));
 
 			Ok(().into())
 		}
@@ -273,6 +312,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
+		// block数が超える　and 金額が目標を超えたときのみ使える
 		pub fn dispense(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let caller = ensure_signed(origin)?;
 
@@ -344,6 +384,26 @@ pub mod pallet {
 			child::ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref())
 		}
 
+		/* ---------------------------------------- vote part --------------------------------------------------- */
+		/// Record vote in the associated child trie.
+		pub fn vote_put(index: FundIndex, who: &T::AccountId) {
+			let id = Self::id_from_index(index);
+			who.using_encoded(|b| child::put(&id, b, &1));
+		}
+
+		/// Lookup vote in the associated child trie.
+		pub fn vote_get(index: FundIndex, who: &T::AccountId) -> BalanceOf<T> {
+			let id = Self::id_from_index(index);
+			who.using_encoded(|b| child::get_or_default::<BalanceOf<T>>(&id, b))
+		}
+
+		/// Remove a contribution from an associated child trie.
+		pub fn vote_kill(index: FundIndex, who: &T::AccountId) {
+			let id = Self::id_from_index(index);
+			who.using_encoded(|b| child::kill(&id, b));
+		}
+
+		/* ---------------------------------------- contribution part ----------------------------------------------- */
 		/// Record a contribution in the associated child trie.
 		pub fn contribution_put(index: FundIndex, who: &T::AccountId, balance: &BalanceOf<T>) {
 			let id = Self::id_from_index(index);
