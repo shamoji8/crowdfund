@@ -81,8 +81,13 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, FundIndex, FundInfoOf<T>, OptionQuery>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn fnund_count)]
+	#[pallet::getter(fn fund_count)]
 	pub type FundCount<T: Config> = StorageValue<_, FundIndex, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn memberlist)]
+	pub type Memberlist<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, FundIndex, Blake2_128Concat, BalanceOf<T>, AccountIdOf<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -233,8 +238,11 @@ pub mod pallet {
 
 			let balance = Self::vote_get(index, &who);
 			ensure!(balance != Zero::zero(), Error::<T>::Alreadyvoted);
+
+			Memberlist::<T>::insert(index, fund.totalvote, &who);
+
 			fund.totalvote += One::one();
-			
+
 			Self::vote_put(index, &who);
 
 			Self::deposit_event(Event::Voted(who, index, fund.totalvote, now));
