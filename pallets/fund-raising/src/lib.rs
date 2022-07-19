@@ -16,14 +16,19 @@ mod benchmarking;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{pallet_prelude::*};
+	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	use frame_support::{inherent::Vec, PalletId, storage::child, traits::{
-		Currency, ExistenceRequirement, ReservableCurrency, WithdrawReasons,
-	}};
+	use frame_support::{
+		inherent::Vec,
+		storage::child,
+		traits::{Currency, ExistenceRequirement, ReservableCurrency, WithdrawReasons},
+		PalletId,
+	};
 
-	use sp_runtime::traits::{Zero, One, Saturating, Hash, AccountIdConversion};
+	use serde::{Deserialize, Serialize};
+
+	use sp_runtime::traits::{AccountIdConversion, Hash, One, Saturating, Zero};
 
 	use scale_info::TypeInfo;
 
@@ -58,6 +63,24 @@ pub mod pallet {
 	type FundInfoOf<T> =
 		FundInfo<AccountIdOf<T>, BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
+	// https://docs.substrate.io/reference/how-to-guides/basics/configure-genesis-state/
+	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum Role {
+		Organization,
+		SysMan,
+		User,
+		Contributer,
+	}
+
+	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum Status {
+		Active,
+		Revoked,
+		Deactivated,
+	}
+
 	#[derive(Encode, Decode, Default, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct FundInfo<AccountId, Balance, BlockNumber> {
@@ -86,8 +109,15 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn memberlist)]
-	pub type Memberlist<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, FundIndex, Blake2_128Concat, BalanceOf<T>, AccountIdOf<T>, OptionQuery>;
+	pub type Memberlist<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		FundIndex,
+		Blake2_128Concat,
+		BalanceOf<T>,
+		AccountIdOf<T>,
+		OptionQuery,
+	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -181,7 +211,14 @@ pub mod pallet {
 
 			<Funds<T>>::insert(
 				index,
-				FundInfo { beneficiary, deposit, raised: Zero::zero(), end, goal, totalvote: Zero::zero() },
+				FundInfo {
+					beneficiary,
+					deposit,
+					raised: Zero::zero(),
+					end,
+					goal,
+					totalvote: Zero::zero(),
+				},
 			);
 
 			Self::deposit_event(Event::Created(index, now));
@@ -226,24 +263,24 @@ pub mod pallet {
 		// ToDo : vote の期限の設定
 		// ensure!(fund.totalvote >= T::MinVotenum::get(), Error::<T>::CannotContribution);
 		#[pallet::weight(10_000)]
-		pub fn vote(
-			origin: OriginFor<T>,
-			index: FundIndex,
-		) -> DispatchResultWithPostInfo {
+		pub fn vote(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(fund.end < now, Error::<T>::FundStillActive);
+			// 多分　大小関係　逆
+			//ensure!(fund.end < now, Error::<T>::FundStillActive);
 
 			let balance = Self::vote_get(index, &who);
-			ensure!(balance != Zero::zero(), Error::<T>::Alreadyvoted);
+			//ensure!(balance != Zero::zero(), Error::<T>::Alreadyvoted);
 
 			Memberlist::<T>::insert(index, fund.totalvote, &who);
 
 			fund.totalvote += One::one();
 
 			Self::vote_put(index, &who);
+
+			Funds::<T>::insert(index, &fund);
 
 			Self::deposit_event(Event::Voted(who, index, fund.totalvote, now));
 
@@ -439,6 +476,5 @@ pub mod pallet {
 			// https://crates.parity.io/frame_support/storage/child/fn.kill_storage.html
 			child::kill_storage(&id, None);
 		}
-
 	}
 }
