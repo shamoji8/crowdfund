@@ -2,7 +2,7 @@
 members = [
     "node",
     "pallets/fund-raising",
-    "pallets/vote",
+    "pallets/account",
     "runtime",
 ]
 [profile.release]

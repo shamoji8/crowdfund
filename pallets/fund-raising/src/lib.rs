@@ -63,24 +63,6 @@ pub mod pallet {
 	type FundInfoOf<T> =
 		FundInfo<AccountIdOf<T>, BalanceOf<T>, <T as frame_system::Config>::BlockNumber>;
 
-	// https://docs.substrate.io/reference/how-to-guides/basics/configure-genesis-state/
-	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub enum Role {
-		Organization,
-		SysMan,
-		User,
-		Contributer,
-	}
-
-	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub enum Status {
-		Active,
-		Revoked,
-		Deactivated,
-	}
-
 	#[derive(Encode, Decode, Default, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct FundInfo<AccountId, Balance, BlockNumber> {
@@ -272,7 +254,8 @@ pub mod pallet {
 			//ensure!(fund.end < now, Error::<T>::FundStillActive);
 
 			let balance = Self::vote_get(index, &who);
-			//ensure!(balance != Zero::zero(), Error::<T>::Alreadyvoted);
+			// vote check
+			//ensure!(balance == Zero::zero(), Error::<T>::Alreadyvoted);
 
 			Memberlist::<T>::insert(index, fund.totalvote, &who);
 

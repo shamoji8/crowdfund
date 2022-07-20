@@ -45,7 +45,7 @@ pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
 pub use pallet_fund_raising;
-pub use pallet_vote;
+pub use pallet_account;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -272,7 +272,7 @@ impl pallet_fund_raising::Config for Runtime {
 	type RetirementPeriod = ConstU32<30>;
 }
 
-impl pallet_vote::Config for Runtime {
+impl pallet_account::Config for Runtime {
 	type Event = Event;
 }
 
@@ -292,8 +292,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
-		FundRaisingModule: pallet_fund_raising,
-		VoteModule: pallet_vote,
+		FundRaising: pallet_fund_raising,
+		Account: pallet_account,
 	}
 );
 
