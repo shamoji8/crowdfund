@@ -269,7 +269,7 @@ impl pallet_fund_raising::Config for Runtime {
 	type Currency = Balances;
 	type SubmissionDeposit = ConstU128<100>;
 	type MinContribution = ConstU128<200>;
-	type MinVotenum = ConstU128<3>;
+	type MinVotenum = ConstU32<3>;
 	type RetirementPeriod = ConstU32<30>;
 }
 
@@ -279,6 +279,8 @@ impl pallet_account::Config for Runtime {
 
 impl pallet_rating::Config for Runtime {
 	type Event = Event;
+	type Currency = Balances;
+	type Fee = ConstU128<100>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

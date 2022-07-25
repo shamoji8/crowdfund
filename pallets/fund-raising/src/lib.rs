@@ -46,7 +46,7 @@ pub mod pallet {
 
 		type MinContribution: Get<BalanceOf<Self>>;
 
-		type MinVotenum: Get<BalanceOf<Self>>;
+		type MinVotenum: Get<u32>;
 
 		type RetirementPeriod: Get<Self::BlockNumber>;
 	}
@@ -77,7 +77,7 @@ pub mod pallet {
 		/// Upper bound on `raised`
 		goal: Balance,
 		/// The total amount voted
-		totalvote: Balance,
+		totalvote: u32,
 	}
 
 	#[pallet::storage]
@@ -96,7 +96,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		FundIndex,
 		Blake2_128Concat,
-		BalanceOf<T>,
+		u32,
 		AccountIdOf<T>,
 		OptionQuery,
 	>;
@@ -109,7 +109,7 @@ pub mod pallet {
 		Voted(
 			<T as frame_system::Config>::AccountId,
 			FundIndex,
-			BalanceOf<T>,
+			u32,
 			<T as frame_system::Config>::BlockNumber,
 		),
 		Contributed(
@@ -253,13 +253,13 @@ pub mod pallet {
 			// 多分　大小関係　逆
 			//ensure!(fund.end < now, Error::<T>::FundStillActive);
 
-			let balance = Self::vote_get(index, &who);
+			let num = Self::vote_get(index, &who);
 			// vote check
-			//ensure!(balance == Zero::zero(), Error::<T>::Alreadyvoted);
+			//ensure!(num == 0, Error::<T>::Alreadyvoted);
 
 			Memberlist::<T>::insert(index, fund.totalvote, &who);
 
-			fund.totalvote += One::one();
+			fund.totalvote += 1;
 
 			Self::vote_put(index, &who);
 

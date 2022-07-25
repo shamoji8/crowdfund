@@ -2,6 +2,7 @@
 
 use frame_support::inherent::Vec;
 use frame_support::pallet_prelude::*;
+use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
 //use pallet_fund_raising::{Role, Status};
 use scale_info::TypeInfo;
@@ -31,19 +32,27 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		type Currency: ReservableCurrency<Self::AccountId>;
+
+		type Fee: Get<BalanceOf<Self>>;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
+
 	#[pallet::storage]
 	#[pallet::getter(fn score_storage)]
-	// Learn more about declaring storage items:
-	// https://docs.substrate.io/v3/runtime/storage#declaring-storage-items
-	pub type ScoreStorage<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, u32, OptionQuery>;
-	
+	pub type ScoreStorage<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, u32, OptionQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn amount)]
+	pub type Amount<T> = StorageValue<_, u32>;
+
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
@@ -58,6 +67,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		AlreadySet,
+		NotEnoughAmount,
 	}
 
 	#[pallet::call]
@@ -68,12 +78,17 @@ pub mod pallet {
 			// This function will return an error if the extrinsic is not signed.
 			// https://docs.substrate.io/v3/runtime/origins
 			let who = ensure_signed(origin)?;
+
+			ensure!(T::Currency::total_balance(&who) >= T::Fee::get(), Error::<T>::NotEnoughAmount);
+
 			match <ScoreStorage<T>>::try_get(&who) {
 				Err(_) => {
 					<ScoreStorage<T>>::insert(&who, 100);
 				},
 				Ok(_) => Err(Error::<T>::AlreadySet)?,
 			}
+
+			Self::deposit_event(Event::ScoreSet(who, 100));
 			// Return a successful DispatchResultWithPostInfo
 			Ok(())
 		}
