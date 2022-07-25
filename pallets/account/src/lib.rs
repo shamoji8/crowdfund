@@ -1,5 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use frame_support::inherent::Vec;
+use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::*;
+//use pallet_fund_raising::{Role, Status};
+use scale_info::TypeInfo;
+
+use serde::{Deserialize, Serialize};
+
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
 /// <https://docs.substrate.io/v3/runtime/frame>
@@ -13,14 +21,8 @@ mod tests;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::inherent::Vec;
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
-	//use pallet_fund_raising::{Role, Status};
-	use scale_info::TypeInfo;
-
-	use serde::{Deserialize, Serialize};
-
+	pub use super::*;
+	
 	// https://docs.substrate.io/reference/how-to-guides/basics/configure-genesis-state/
 	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -54,10 +56,10 @@ pub mod pallet {
 	#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(bounds(), skip_type_params(T))]
 	pub struct Account<T: Config> {
-		id: T::AccountId,
-		role: Role,
-		status: Status,
-		metadata: Vec<u8>,
+		pub id: T::AccountId,
+		pub role: Role,
+		pub status: Status,
+		pub metadata: Vec<u8>,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -121,7 +123,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		AccountRegisted,
+		AccountRegisted(T::AccountId),
 		AccountUpdated(T::AccountId),
 	}
 
@@ -132,6 +134,8 @@ pub mod pallet {
 		AlreadyRegistered,
 		/// Account is not Registered
 		AccountNotRegistered,
+
+		NotExactRole,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -142,7 +146,7 @@ pub mod pallet {
 		/// An example dispatchable that takes a singles value as a parameter, writes the value to
 		/// storage and emits an event. This function must be dispatched by a signed extrinsic.
 		#[pallet::weight(10_000)]
-		pub fn register(origin: OriginFor<T>, role: Role, metadata: Vec<u8>) -> DispatchResult {
+		pub fn register_account(origin: OriginFor<T>, role: Role, metadata: Vec<u8>) -> DispatchResult {
 			// Check that the extrinsic was signed and get the signer.
 			// This function will return an error if the extrinsic is not signed.
 			// https://docs.substrate.io/v3/runtime/origins
@@ -158,13 +162,49 @@ pub mod pallet {
 							metadata,
 						},
 					);
-					<AccountRole<T>>::insert(who, role.clone());
+					<AccountRole<T>>::insert(&who, role.clone());
 				},
 				Ok(_) => Err(Error::<T>::AlreadyRegistered)?,
 			}
 			// Return a successful DispatchResultWithPostInfo
-			Self::deposit_event(Event::AccountRegisted);
+			Self::deposit_event(Event::AccountRegisted(who));
 			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn update_account(origin: OriginFor<T>, role: Role) -> DispatchResult {
+			// こめんと
+			let who = ensure_signed(origin)?;
+			<AccountStorage<T>>::try_mutate(&who, |acc| {
+				if let Some(account) = acc {
+					account.role = role;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+			// Return a successful DispatchResultWithPostInfo
+			Self::deposit_event(Event::AccountUpdated(who));
+			Ok(())
+		}
+	}
+}
+
+/* ----------------------------------------------------------- helper function -------------------------------------------------------- */
+pub trait EnsureRole<T: Config> {
+	fn ensure_role(who: &T::AccountId, role: Role) -> DispatchResult;
+}
+
+impl<T: Config> EnsureRole<T> for Pallet<T> {
+	fn ensure_role(who: &T::AccountId, role: Role) -> DispatchResult {
+		if let Some(account) = <AccountStorage<T>>::get(who) {
+			if account.role == role {
+				Ok(())
+			} else {
+				return Err(Error::<T>::NotExactRole)?
+			}
+		} else {
+			return Err(Error::<T>::AccountNotRegistered)?
 		}
 	}
 }

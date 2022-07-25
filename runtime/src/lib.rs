@@ -46,6 +46,7 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_fund_raising;
 pub use pallet_account;
+pub use pallet_rating;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -276,6 +277,10 @@ impl pallet_account::Config for Runtime {
 	type Event = Event;
 }
 
+impl pallet_rating::Config for Runtime {
+	type Event = Event;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -294,6 +299,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		FundRaising: pallet_fund_raising,
 		Account: pallet_account,
+		Rating: pallet_rating,
 	}
 );
 

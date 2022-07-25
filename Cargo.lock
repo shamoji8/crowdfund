@@ -3777,6 +3777,7 @@ dependencies = [
  "pallet-fund-raising",
  "pallet-grandpa",
  "pallet-randomness-collective-flip",
+ "pallet-rating",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
@@ -4074,6 +4075,21 @@ dependencies = [
  "scale-info",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-rating"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

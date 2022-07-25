@@ -51,6 +51,7 @@ hex-literal = { version = "0.3.4", optional = true }
 # Local Dependencies
 pallet-fund-raising = { version = "4.0.0-dev", default-features = false, path = "../pallets/fund-raising" }
 pallet-account = { version = "4.0.0-dev", default-features = false, path = "../pallets/account" }
+pallet-rating = { version = "4.0.0-dev", default-features = false, path = "../pallets/rating" }
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.22" }
@@ -73,7 +74,8 @@ std = [
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
-	"pallet-account/std",	
+	"pallet-account/std",
+	"pallet-rating/std",	
 	"sp-api/std",
 	"sp-block-builder/std",
 	"sp-consensus-aura/std",
@@ -97,6 +99,7 @@ runtime-benchmarks = [
 	"pallet-grandpa/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-account/runtime-benchmarks",
+	"pallet-rating/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
@@ -108,6 +111,7 @@ try-runtime = [
 	"pallet-fund-raising/try-runtime",
 	"pallet-grandpa/try-runtime",
 	"pallet-account/try-runtime",
+	"pallet-rating/try-runtime",
 	"pallet-randomness-collective-flip/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-timestamp/try-runtime",
