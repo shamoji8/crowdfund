@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::inherent::Vec;
+//use frame_support::inherent::Vec;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
 //use pallet_fund_raising::{Role, Status};
-use scale_info::TypeInfo;
+//use scale_info::TypeInfo;
 
-use serde::{Deserialize, Serialize};
+//use serde::{Deserialize, Serialize};
 
 /// Edit this file to define custom logic or remove it if it is not needed.
 /// Learn more about FRAME and the core library of Substrate FRAME pallets:
@@ -52,6 +52,25 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn amount)]
 	pub type Amount<T> = StorageValue<_, u32>;
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig {
+		pub amount_num: u32,
+	}
+
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			Self { amount_num: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+		fn build(&self) {
+			<Amount<T>>::put(&self.amount_num);
+		}
+	}
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors

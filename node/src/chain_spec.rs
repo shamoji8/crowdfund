@@ -1,6 +1,6 @@
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SudoConfig,
-	SystemConfig, AccountConfig, WASM_BINARY,
+	SystemConfig, AccountConfig, RatingConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -62,6 +62,8 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				true,
 				// sysman_accountmap
 				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+
+				0,
 			)
 		},
 		// Bootnodes
@@ -112,6 +114,8 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				true,
 				// sysman_accountmap
 				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+
+				0,
 			)
 		},
 		// Bootnodes
@@ -136,6 +140,7 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 	sysman_accountmap: Vec<AccountId>,
+	value: u32,
 ) -> GenesisConfig {
 	GenesisConfig {
 		system: SystemConfig {
@@ -159,6 +164,9 @@ fn testnet_genesis(
 		transaction_payment: Default::default(),
 		account: AccountConfig {
 			sysman_accountmap: sysman_accountmap.iter().cloned().map(|x| (x)).collect(),
+		},
+		rating: RatingConfig {
+			amount_num: value,
 		}
 	}
 }
