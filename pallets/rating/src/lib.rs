@@ -31,7 +31,6 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type Currency: ReservableCurrency<Self::AccountId>;
@@ -74,17 +73,14 @@ pub mod pallet {
 		}
 	}
 
-	// Pallets use events to inform users when important changes are made.
-	// https://docs.substrate.io/v3/runtime/events-and-errors
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event documentation should end with an array that provides descriptive names for event
-		/// parameters. [something, who]
 		ScoreSet(T::AccountId, i32),
+
+		ScoreCheck(T::AccountId, i32),
 	}
 
-	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
 		AlreadySet,
@@ -96,13 +92,12 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
 		pub fn set_score(origin: OriginFor<T>) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			// This function will return an error if the extrinsic is not signed.
-			// https://docs.substrate.io/v3/runtime/origins
 			let who = ensure_signed(origin)?;
 
 			ensure!(T::Currency::total_balance(&who) >= T::Fee::get(), Error::<T>::NotEnoughAmount);
 
+			// need to pay Fee to use this "set_score" function
+			// ToDo : write transport function
 			match <ScoreStorage<T>>::try_get(&who) {
 				Err(_) => {
 					<ScoreStorage<T>>::insert(&who, 100);
@@ -117,7 +112,10 @@ pub mod pallet {
 
 		#[pallet::weight(10_000)]
 		pub fn evaluation(origin: OriginFor<T>, account: AccountIdOf<T>, mut person_score: i32) -> DispatchResult {
-			let mut score = Self::score_storage(account).ok_or(Error::<T>::InvalidAccount)?;
+			let who = ensure_signed(origin)?;
+			let receiver_score = Self::score_storage(&account).ok_or(Error::<T>::InvalidAccount)?;
+			let sender_score = Self::score_storage(&who).ok_or(Error::<T>::InvalidAccount)?;
+
 
 			person_score += 1;
 
@@ -125,7 +123,40 @@ pub mod pallet {
 			let psc = vec![-10, -3, -1, 1, 3, 10];
 
 
-			let calc = (score + psc[person_score as usize]) + (psc[person_score as usize] * score) / 1000;
+			let mut calc = (receiver_score + psc[person_score as usize]) + (psc[person_score as usize] * sender_score) / 1000;
+
+			if calc > 0 && calc < 1000 {
+				<ScoreStorage<T>>::mutate(&account, |num| {
+					*num = Some(calc);
+				});
+			} else if calc >= 1000 {
+				<ScoreStorage<T>>::mutate(&account, |num| {
+					*num = Some(1000);
+				});
+				calc = 1000;
+			} else {
+				<ScoreStorage<T>>::mutate(&account, |num| {
+					*num = Some(1);
+				});
+				calc = 1;
+			}
+
+			Self::deposit_event(Event::ScoreCheck(account, calc));
+
+			Ok(())
+		}
+
+		// check other account score
+		#[pallet::weight(10_000)]
+		pub fn consution (origin: OriginFor<T>, account: AccountIdOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			// check origin account is registered
+			ensure!(<ScoreStorage<T>>::contains_key(&who) == true, Error::<T>::InvalidAccount);
+			// check "account id" is registered
+			let receiver_score = Self::score_storage(&account).ok_or(Error::<T>::InvalidAccount)?;
+
+			Self::deposit_event(Event::ScoreCheck(account, receiver_score));
 
 			Ok(())
 		}
