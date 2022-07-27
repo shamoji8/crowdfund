@@ -251,6 +251,7 @@ pub mod pallet {
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			let now = <frame_system::Pallet<T>>::block_number();
 			// 多分　大小関係　逆
+			// Error も変える
 			//ensure!(fund.end < now, Error::<T>::FundStillActive);
 
 			let num = Self::vote_get(index, &who);

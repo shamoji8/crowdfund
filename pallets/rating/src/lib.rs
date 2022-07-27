@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//use frame_support::inherent::Vec;
+// use frame_support::inherent::Vec;
+use scale_info::prelude::vec;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
@@ -47,15 +48,16 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn score_storage)]
-	pub type ScoreStorage<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, u32, OptionQuery>;
+	pub type ScoreStorage<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, i32, OptionQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn amount)]
-	pub type Amount<T> = StorageValue<_, u32>;
+	// initail value : 0
+	pub type Amount<T> = StorageValue<_, i32>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
-		pub amount_num: u32,
+		pub amount_num: i32,
 	}
 
 	#[cfg(feature = "std")]
@@ -79,7 +81,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event documentation should end with an array that provides descriptive names for event
 		/// parameters. [something, who]
-		ScoreSet(T::AccountId, u32),
+		ScoreSet(T::AccountId, i32),
 	}
 
 	// Errors inform users that something went wrong.
@@ -87,6 +89,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		AlreadySet,
 		NotEnoughAmount,
+		InvalidAccount,
 	}
 
 	#[pallet::call]
@@ -109,6 +112,21 @@ pub mod pallet {
 
 			Self::deposit_event(Event::ScoreSet(who, 100));
 			// Return a successful DispatchResultWithPostInfo
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn evaluation(origin: OriginFor<T>, account: AccountIdOf<T>, mut person_score: i32) -> DispatchResult {
+			let mut score = Self::score_storage(account).ok_or(Error::<T>::InvalidAccount)?;
+
+			person_score += 1;
+
+			// 1: -10, 2: -3, 3: -1, 4: 1, 5: 3, 6: 10
+			let psc = vec![-10, -3, -1, 1, 3, 10];
+
+
+			let calc = (score + psc[person_score as usize]) + (psc[person_score as usize] * score) / 1000;
+
 			Ok(())
 		}
 	}

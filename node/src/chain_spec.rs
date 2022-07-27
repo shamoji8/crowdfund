@@ -140,7 +140,7 @@ fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
 	_enable_println: bool,
 	sysman_accountmap: Vec<AccountId>,
-	value: u32,
+	value: i32,
 ) -> GenesisConfig {
 	GenesisConfig {
 		system: SystemConfig {
