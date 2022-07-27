@@ -269,8 +269,11 @@ impl pallet_fund_raising::Config for Runtime {
 	type Currency = Balances;
 	type SubmissionDeposit = ConstU128<100>;
 	type MinContribution = ConstU128<200>;
-	type MinVotenum = ConstU32<3>;
+	// 1 / 20 = 5%
+	type FeePercent = ConstU128<20>;
+	type MinVotenum = ConstU128<3>;
 	type RetirementPeriod = ConstU32<30>;
+	type CheckEnsure = Account;
 }
 
 impl pallet_account::Config for Runtime {

@@ -26,17 +26,19 @@ pub mod pallet {
 		PalletId,
 	};
 
-	use serde::{Deserialize, Serialize};
+	// use serde::{Deserialize, Serialize};
 
-	use sp_runtime::traits::{AccountIdConversion, Hash, One, Saturating, Zero};
+	use sp_runtime::traits::{AccountIdConversion, Hash, Saturating, Zero, One};
 
 	use scale_info::TypeInfo;
+
+	use pallet_account::{EnsureAccount, Status, Role, Valid};
 
 	const PALLET_ID: PalletId = PalletId(*b"ex/cfund");
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_account :: Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -46,9 +48,13 @@ pub mod pallet {
 
 		type MinContribution: Get<BalanceOf<Self>>;
 
-		type MinVotenum: Get<u32>;
+		type FeePercent: Get<BalanceOf<Self>>;
+
+		type MinVotenum: Get<BalanceOf<Self>>;
 
 		type RetirementPeriod: Get<Self::BlockNumber>;
+
+		type CheckEnsure: EnsureAccount<Self>;
 	}
 
 	#[pallet::pallet]
@@ -77,7 +83,7 @@ pub mod pallet {
 		/// Upper bound on `raised`
 		goal: Balance,
 		/// The total amount voted
-		totalvote: u32,
+		totalvote: Balance,
 	}
 
 	#[pallet::storage]
@@ -96,7 +102,7 @@ pub mod pallet {
 		Blake2_128Concat,
 		FundIndex,
 		Blake2_128Concat,
-		u32,
+		BalanceOf<T>,
 		AccountIdOf<T>,
 		OptionQuery,
 	>;
@@ -109,7 +115,7 @@ pub mod pallet {
 		Voted(
 			<T as frame_system::Config>::AccountId,
 			FundIndex,
-			u32,
+			BalanceOf<T>,
 			<T as frame_system::Config>::BlockNumber,
 		),
 		Contributed(
@@ -254,13 +260,13 @@ pub mod pallet {
 			// Error も変える
 			//ensure!(fund.end < now, Error::<T>::FundStillActive);
 
-			let num = Self::vote_get(index, &who);
+			// let num = Self::vote_get(index, &who);
 			// vote check
 			//ensure!(num == 0, Error::<T>::Alreadyvoted);
 
 			Memberlist::<T>::insert(index, fund.totalvote, &who);
 
-			fund.totalvote += 1;
+			fund.totalvote += One::one();
 
 			Self::vote_put(index, &who);
 
@@ -357,16 +363,39 @@ pub mod pallet {
 
 			let account = Self::fund_account_id(index);
 
+			// voter に渡される金額
+			let voteramount = (fund.raised / T::FeePercent::get()) / fund.totalvote;
+			
+			// beneficiary に渡される金額
+			let beneficiaryamount = fund.raised - voteramount * fund.totalvote;
+			
 			// Beneficiary collects the contributed funds
 			let _ = T::Currency::resolve_creating(
 				&fund.beneficiary,
 				T::Currency::withdraw(
 					&account,
-					fund.raised,
+					beneficiaryamount,
 					WithdrawReasons::TRANSFER,
 					ExistenceRequirement::AllowDeath,
 				)?,
 			);
+
+			let mut balancenum: BalanceOf<T> = Zero::zero();
+
+			// give monry who votes to this idea
+			while balancenum != fund.totalvote {
+				let _account = Self::memberlist(index, &balancenum).ok_or(Error::<T>::InvalidIndex)?;
+				let _ = T::Currency::resolve_creating(
+					&_account,
+					T::Currency::withdraw(
+						&account,
+						voteramount,
+					WithdrawReasons::TRANSFER,
+					ExistenceRequirement::AllowDeath,
+				)?,
+			);
+				balancenum += One::one();
+			}
 
 			// Caller collects the deposit
 			let _ = T::Currency::resolve_creating(

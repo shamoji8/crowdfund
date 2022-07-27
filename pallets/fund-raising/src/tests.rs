@@ -17,6 +17,8 @@ use sp_runtime::{
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
 type Block = frame_system::mocking::MockBlock<TestRuntime>;
 
+/*
+
 construct_runtime!(
 	pub enum TestRuntime where
 		Block = Block,
@@ -414,3 +416,5 @@ fn dispense_handles_basic_errors() {
 		);
 	});
 }
+
+*/
