@@ -98,12 +98,14 @@ pub mod pallet {
 
 			// need to pay Fee to use this "set_score" function
 			// ToDo : write transport function
+			/*
 			match <ScoreStorage<T>>::try_get(&who) {
 				Err(_) => {
 					<ScoreStorage<T>>::insert(&who, 100);
 				},
 				Ok(_) => Err(Error::<T>::AlreadySet)?,
 			}
+			*/
 
 			Self::deposit_event(Event::ScoreSet(who, 100));
 			// Return a successful DispatchResultWithPostInfo
