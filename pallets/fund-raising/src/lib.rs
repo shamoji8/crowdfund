@@ -330,7 +330,7 @@ pub mod pallet {
 
 			// Check that enough time has passed to remove from storage
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(now >= fund.end + T::RetirementPeriod::get(), Error::<T>::FundNotRetired);
+			ensure!(now > fund.end + T::RetirementPeriod::get(), Error::<T>::FundNotRetired);
 
 			let account = Self::fund_account_id(index);
 
