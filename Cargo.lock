@@ -4084,6 +4084,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "pallet-account",
+ "pallet-fund-raising",
  "parity-scale-codec",
  "scale-info",
  "serde",

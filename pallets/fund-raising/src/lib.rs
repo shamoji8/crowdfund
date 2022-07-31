@@ -54,6 +54,8 @@ pub mod pallet {
 
 		type RetirementPeriod: Get<Self::BlockNumber>;
 
+		type VotingPeriod: Get<Self::BlockNumber>;
+
 		type CheckEnsure: EnsureAccount<Self>;
 	}
 
@@ -78,7 +80,10 @@ pub mod pallet {
 		deposit: Balance,
 		/// The total amount raised
 		raised: Balance,
+		/// Block number which funding created
+		start: BlockNumber,
 		/// Block number after which funding must have succeeded
+		/// Length of block time from creation to end of funding
 		end: BlockNumber,
 		/// Upper bound on `raised`
 		goal: Balance,
@@ -111,7 +116,11 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	/// #[pallet::metadata(BalanceOf<T> = "Balance", AccountId<T> = "AccountId", BlockNumber<T> = "BlockNumber")]
 	pub enum Event<T: Config> {
-		Created(FundIndex, <T as frame_system::Config>::BlockNumber),
+		Created(
+			FundIndex, 
+			<T as frame_system::Config>::BlockNumber,
+			<T as frame_system::Config>::BlockNumber,
+		),
 		Voted(
 			<T as frame_system::Config>::AccountId,
 			FundIndex,
@@ -157,6 +166,8 @@ pub mod pallet {
 		ContributionPeriodOver,
 		/// You may not withdraw or dispense funds while the fund is still active
 		FundStillActive,
+		/// You may not contribute funds while the fund is still active
+		VoteStillActive,
 		/// You cannot withdraw funds because you have not contributed any
 		NoContribution,
 		/// You cannot dissolve a fund that has not yet completed its retirement period
@@ -167,6 +178,8 @@ pub mod pallet {
 		Alreadyvoted,
 		/// You cant contribute beacuse of it doesnt meet number of votes
 		CannotContribution,
+		/// Too late to vote
+		CannnotVote,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -179,14 +192,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			beneficiary: AccountIdOf<T>,
 			goal: BalanceOf<T>,
-			end: T::BlockNumber,
+			mut end: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			let creater = ensure_signed(origin)?;
 			let account = <AccountStorage<T>>::get(&creater).ok_or(Error::<T>::InvalidAccount)?;
 			T::CheckEnsure::ensure_valid(&creater, account.valid)?;
 
-			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(end > now, Error::<T>::EndTooEarly);
+			let start = <frame_system::Pallet<T>>::block_number();
+			ensure!(end > start, Error::<T>::EndTooEarly);
 			let deposit = T::SubmissionDeposit::get();
 			let imb = T::Currency::withdraw(
 				&creater,
@@ -194,6 +207,8 @@ pub mod pallet {
 				WithdrawReasons::TRANSFER,
 				ExistenceRequirement::AllowDeath,
 			)?;
+
+			end += T::VotingPeriod::get();
 
 			let index = <FundCount<T>>::get();
 			// not protected against overflow, see safemath section
@@ -208,13 +223,14 @@ pub mod pallet {
 					beneficiary,
 					deposit,
 					raised: Zero::zero(),
+					start,
 					end,
 					goal,
 					totalvote: Zero::zero(),
 				},
 			);
 
-			Self::deposit_event(Event::Created(index, now));
+			Self::deposit_event(Event::Created(index, start, end));
 			Ok(().into())
 		}
 
@@ -234,6 +250,7 @@ pub mod pallet {
 
 			// Make sure crowdfund has not ended
 			let now = <frame_system::Pallet<T>>::block_number();
+			ensure!(now > fund.start + T::VotingPeriod::get(), Error::<T>::VoteStillActive);
 			ensure!(fund.end > now, Error::<T>::ContributionPeriodOver);
 
 			// Add contribution to the fund
@@ -265,8 +282,7 @@ pub mod pallet {
 
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			let now = <frame_system::Pallet<T>>::block_number();
-			// Error も変える
-			//ensure!(fund.end > now, Error::<T>::FundStillActive);
+			ensure!(fund.start + T::VotingPeriod::get() > now, Error::<T>::CannnotVote);
 
 			// let num = Self::vote_get(index, &who);
 			// vote check
@@ -367,7 +383,7 @@ pub mod pallet {
 			// Check that enough time has passed to remove from storage
 			let now = <frame_system::Pallet<T>>::block_number();
 
-			ensure!(now >= fund.end, Error::<T>::FundStillActive);
+			ensure!(now > fund.end, Error::<T>::FundStillActive);
 
 			// Check that the fund was actually successful
 			ensure!(fund.raised >= fund.goal, Error::<T>::UnsuccessfulFund);

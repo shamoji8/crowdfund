@@ -74,6 +74,7 @@ pub mod pallet {
 		pub status: Status,
 		pub valid: Valid,
 		pub metadata: Vec<u8>,
+		pub score: i32,
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -120,6 +121,7 @@ pub mod pallet {
 					status: Status::Active,
 					valid: Valid::Validated,
 					metadata: Vec::new(),
+					score: 100,
 				};
 				<AccountStorage<T>>::insert(a, account);
 				<AccountRole<T>>::insert(a, Role::SysMan);
@@ -172,6 +174,7 @@ pub mod pallet {
 							status: Status::Active,
 							valid: Valid::Unvalidated,
 							metadata,
+							score: 100,
 						},
 					);
 					<AccountRole<T>>::insert(&who, Role::User);
