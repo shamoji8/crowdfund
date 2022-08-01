@@ -203,6 +203,14 @@ pub mod pallet {
 				}
 				Ok(())
 			})?;
+			<AccountRole<T>>::try_mutate(&sys, |acc| {
+				if let Some(account) = acc {
+					*account = Role::SysMan;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
 
 			Self::deposit_event(Event::SysmanRegisted(who));
 			Ok(())
@@ -220,6 +228,14 @@ pub mod pallet {
 				if let Some(account) = acc {
 					account.role = Role::Validater;
 					account.valid = Valid::Validated;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+			<AccountRole<T>>::try_mutate(&val, |acc| {
+				if let Some(account) = acc {
+					*account = Role::Validater;
 				} else {
 					return Err(Error::<T>::AccountNotRegistered)
 				}
@@ -267,6 +283,14 @@ pub mod pallet {
 				if let Some(account) = acc {
 					account.role = Role::Voter;
 					account.valid = Valid::Validated;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+			<AccountRole<T>>::try_mutate(&val, |acc| {
+				if let Some(account) = acc {
+					*account = Role::Voter;
 				} else {
 					return Err(Error::<T>::AccountNotRegistered)
 				}

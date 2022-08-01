@@ -271,6 +271,7 @@ impl pallet_fund_raising::Config for Runtime {
 	type MinContribution = ConstU128<200>;
 	// 1 / 20 = 5%
 	type FeePercent = ConstU128<20>;
+	type Percent = ConstU128<50>;
 	type MinVotenum = ConstU128<3>;
 	type RetirementPeriod = ConstU32<30>;
 	type VotingPeriod = ConstU32<30>;

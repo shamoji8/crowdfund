@@ -28,17 +28,17 @@ pub mod pallet {
 
 	// use serde::{Deserialize, Serialize};
 
-	use sp_runtime::traits::{AccountIdConversion, Hash, Saturating, Zero, One};
+	use sp_runtime::traits::{AccountIdConversion, Hash, One, Saturating, Zero};
 
 	use scale_info::TypeInfo;
 
-	use pallet_account::{EnsureAccount, Role, Valid, AccountStorage};
+	use pallet_account::{AccountStorage, EnsureAccount, Role, Valid};
 
 	const PALLET_ID: PalletId = PalletId(*b"ex/cfund");
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_account :: Config {
+	pub trait Config: frame_system::Config + pallet_account::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -49,6 +49,8 @@ pub mod pallet {
 		type MinContribution: Get<BalanceOf<Self>>;
 
 		type FeePercent: Get<BalanceOf<Self>>;
+
+		type Percent: Get<BalanceOf<Self>>;
 
 		type MinVotenum: Get<BalanceOf<Self>>;
 
@@ -117,7 +119,7 @@ pub mod pallet {
 	/// #[pallet::metadata(BalanceOf<T> = "Balance", AccountId<T> = "AccountId", BlockNumber<T> = "BlockNumber")]
 	pub enum Event<T: Config> {
 		Created(
-			FundIndex, 
+			FundIndex,
 			<T as frame_system::Config>::BlockNumber,
 			<T as frame_system::Config>::BlockNumber,
 		),
@@ -180,6 +182,8 @@ pub mod pallet {
 		CannotContribution,
 		/// Too late to vote
 		CannnotVote,
+
+		NotEnoughAmount,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -199,7 +203,7 @@ pub mod pallet {
 			T::CheckEnsure::ensure_valid(&creater, account.valid)?;
 
 			let start = <frame_system::Pallet<T>>::block_number();
-			ensure!(end > start, Error::<T>::EndTooEarly);
+			ensure!(end > Zero::zero(), Error::<T>::EndTooEarly);
 			let deposit = T::SubmissionDeposit::get();
 			let imb = T::Currency::withdraw(
 				&creater,
@@ -208,7 +212,7 @@ pub mod pallet {
 				ExistenceRequirement::AllowDeath,
 			)?;
 
-			end += T::VotingPeriod::get();
+			end += T::VotingPeriod::get() + start;
 
 			let index = <FundCount<T>>::get();
 			// not protected against overflow, see safemath section
@@ -242,6 +246,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			// let account = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
+
 			T::CheckEnsure::ensure_valid(&who, Valid::Validated)?;
 
 			ensure!(value >= T::MinContribution::get(), Error::<T>::ContributionTooSmall);
@@ -391,11 +396,12 @@ pub mod pallet {
 			let account = Self::fund_account_id(index);
 
 			// voter に渡される金額
-			let voteramount = (fund.raised / T::FeePercent::get()) / fund.totalvote;
-			
+			let mut voteramount = (fund.raised / T::FeePercent::get()) / fund.totalvote;
 			// beneficiary に渡される金額
 			let beneficiaryamount = fund.raised - voteramount * fund.totalvote;
-			
+
+			voteramount -= voteramount / T::Percent::get();
+
 			// Beneficiary collects the contributed funds
 			let _ = T::Currency::resolve_creating(
 				&fund.beneficiary,
@@ -411,16 +417,17 @@ pub mod pallet {
 
 			// give monry who votes to this idea
 			while balancenum != fund.totalvote {
-				let _account = Self::memberlist(index, &balancenum).ok_or(Error::<T>::InvalidIndex)?;
+				let _account =
+					Self::memberlist(index, &balancenum).ok_or(Error::<T>::InvalidIndex)?;
 				let _ = T::Currency::resolve_creating(
 					&_account,
 					T::Currency::withdraw(
 						&account,
 						voteramount,
-					WithdrawReasons::TRANSFER,
-					ExistenceRequirement::AllowDeath,
-				)?,
-			);
+						WithdrawReasons::TRANSFER,
+						ExistenceRequirement::AllowDeath,
+					)?,
+				);
 				balancenum += One::one();
 			}
 
