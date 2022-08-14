@@ -29,7 +29,7 @@ pub mod pallet {
 	pub enum Role {
 		SysMan,
 		Validater,
-		Voter,
+		//Voter,
 		User,
 	}
 
@@ -150,7 +150,7 @@ pub mod pallet {
 		/// Account is not Registered
 		AccountNotRegistered,
 
-		InvalidAccountId,
+		InvalidAccount,
 
 		NotExactRole,
 
@@ -271,6 +271,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/*
 		#[pallet::weight(10_000)]
 		pub fn approve_voter(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -300,7 +301,9 @@ pub mod pallet {
 			Self::deposit_event(Event::VoterRegisted(who));
 			Ok(())
 		}
+		*/
 
+		/*
 		#[pallet::weight(10_000)]
 		pub fn revoke_voter(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -325,6 +328,7 @@ pub mod pallet {
 			Self::deposit_event(Event::VoterRevoked(who));
 			Ok(())
 		}
+		*/
 
 		#[pallet::weight(10_000)]
 		pub fn revoke_user(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
@@ -416,15 +420,14 @@ impl<T: Config> EnsureAccount<T> for Pallet<T> {
 			return Err(Error::<T>::AccountNotRegistered)?
 		}
 	}
-
 	/*
 	fn check_sysman(who: &T::AccountId) -> DispatchResult{
-		let role = Self::account_role(who).ok_or(Error::<T>::InvalidAccountId)?;
+		let role = Self::account_role(who).ok_or(Error::<T>::InvalidAccount)?;
 
 		if role == Role::SysMan {
 			return Ok(())
 		} else {
-			return Err(Error::<T>::InvalidAccountId)?
+			return Err(Error::<T>::InvalidAccount)?
 		}
 	}
 	*/

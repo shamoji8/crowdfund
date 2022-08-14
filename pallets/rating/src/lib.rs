@@ -5,7 +5,7 @@ use scale_info::prelude::vec;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
-use pallet_account::{EnsureAccount, Role, Valid, AccountStorage};
+use pallet_account::{/*EnsureAccount, Role, Valid,*/ AccountStorage};
 //use pallet_fund_raising::{Role, Status};
 //use scale_info::TypeInfo;
 
@@ -120,7 +120,7 @@ pub mod pallet {
 		*/
 
 		#[pallet::weight(10_000)]
-		pub fn evaluation(origin: OriginFor<T>, val: AccountIdOf<T>, mut person_score: i32) -> DispatchResult {
+		pub fn evaluation(origin: OriginFor<T>, val: AccountIdOf<T>, mut rate: i32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let sender = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
 			let receiver = <AccountStorage<T>>::get(&val).ok_or(Error::<T>::InvalidAccount)?;
@@ -130,14 +130,14 @@ pub mod pallet {
 			//let sender_score = Self::score_storage(&who).ok_or(Error::<T>::InvalidAccount)?;
 
 
-			person_score += 1;
-			ensure!(person_score >= 1 && person_score <= 6, Error::<T>::InvalidScore);
+			rate += 1;
+			ensure!(rate >= 1 && rate <= 6, Error::<T>::InvalidScore);
 
 			// 1: -10, 2: -3, 3: -1, 4: 1, 5: 3, 6: 10
 			let psc = vec![-10, -3, -1, 1, 3, 10];
 
 
-			let mut calc = (receiver_score + psc[person_score as usize]) + (psc[person_score as usize] * sender_score) / 1000;
+			let mut calc = (receiver_score + psc[rate as usize]) + (psc[rate as usize] * sender_score) / 1000;
 
 			if calc >= 1000 {
 				calc = 1000;

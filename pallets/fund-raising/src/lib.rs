@@ -32,7 +32,7 @@ pub mod pallet {
 
 	use scale_info::TypeInfo;
 
-	use pallet_account::{AccountStorage, EnsureAccount, Role, Valid};
+	use pallet_account::{AccountStorage, EnsureAccount, Valid};
 
 	const PALLET_ID: PalletId = PalletId(*b"ex/cfund");
 
@@ -184,6 +184,8 @@ pub mod pallet {
 		CannnotVote,
 
 		NotEnoughAmount,
+
+		NotEnoughScore,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -283,7 +285,12 @@ pub mod pallet {
 		pub fn vote(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			T::CheckEnsure::ensure_valid(&who, Valid::Validated)?;
-			T::CheckEnsure::ensure_role(&who, Role::Voter)?;
+			let account = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
+			//T::CheckEnsure::ensure_role(&who, Role::Voter)?;
+
+			// check limit
+			// "200" >= score holder can vote
+			ensure!(account.score >= 200, Error::<T>::NotEnoughScore);
 
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			let now = <frame_system::Pallet<T>>::block_number();
