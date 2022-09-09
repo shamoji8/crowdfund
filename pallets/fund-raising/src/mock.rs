@@ -1,5 +1,8 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
+use crate as pallet_fund_raising;
+use frame_support::{
+	parameter_types,
+	traits::{ConstU16, ConstU32, ConstU64, ConstU128},
+};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
@@ -10,6 +13,8 @@ use sp_runtime::{
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
+pub(crate) type BlockNumber = u64;
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -18,7 +23,8 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		FundRaising: pallet_fund_raising::{Pallet, Call, Storage, Event<T>},
+		Account: pallet_account::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -49,7 +55,25 @@ impl system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_template::Config for Test {
+parameter_types! {
+	pub static Period: BlockNumber = 30;
+}
+
+impl pallet_fund_raising::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
+	type SubmissionDeposit = ConstU128<100>;
+	type MinContribution = ConstU128<200>;
+	// 1 / 20 = 5%
+	type FeePercent = ConstU128<20>;
+	type Percent = ConstU128<50>;
+	type MinVotenum = ConstU128<3>;
+	type RetirementPeriod = Period;
+	type VotingPeriod = Period;
+	type CheckEnsure = Account;
+}
+
+impl pallet_account::Config for Test {
 	type Event = Event;
 }
 

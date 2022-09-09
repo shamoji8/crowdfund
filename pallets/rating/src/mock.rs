@@ -1,5 +1,8 @@
-use crate as pallet_template;
-use frame_support::traits::{ConstU16, ConstU64};
+use crate as pallet_rating;
+use frame_support::{
+	parameter_types,
+	traits::{ConstU16, ConstU64, ConstU128},
+};
 use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
@@ -18,7 +21,9 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Rating: pallet_rating::{Pallet, Call, Storage, Event<T>},
+		Account: pallet_account::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -49,7 +54,29 @@ impl system::Config for Test {
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl pallet_template::Config for Test {
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
+impl pallet_balances::Config for Test {
+	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = [u8; 8];
+	type Balance = u128;
+	type DustRemoval = ();
+	type Event = Event;
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+}
+
+impl pallet_rating::Config for Test {
+	type Event = Event;
+	type Currency = Balances;
+	type Fee = ConstU128<100>;
+}
+
+impl pallet_account::Config for Test {
 	type Event = Event;
 }
 
