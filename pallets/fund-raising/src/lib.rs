@@ -32,7 +32,7 @@ pub mod pallet {
 
 	use scale_info::TypeInfo;
 
-	use pallet_account::{AccountStorage, EnsureAccount, Valid};
+	use pallet_account::{AccountStorage, EnsureAccount};
 
 	const PALLET_ID: PalletId = PalletId(*b"ex/cfund");
 
@@ -201,8 +201,7 @@ pub mod pallet {
 			mut end: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
 			let creater = ensure_signed(origin)?;
-			let account = <AccountStorage<T>>::get(&creater).ok_or(Error::<T>::InvalidAccount)?;
-			T::CheckEnsure::ensure_valid(&creater, account.valid)?;
+			let _account = <AccountStorage<T>>::get(&creater).ok_or(Error::<T>::InvalidAccount)?;
 
 			let start = <frame_system::Pallet<T>>::block_number();
 			ensure!(end > Zero::zero(), Error::<T>::EndTooEarly);
@@ -249,8 +248,6 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// let account = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
 
-			T::CheckEnsure::ensure_valid(&who, Valid::Validated)?;
-
 			ensure!(value >= T::MinContribution::get(), Error::<T>::ContributionTooSmall);
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			ensure!(fund.totalvote >= T::MinVotenum::get(), Error::<T>::CannotContribution);
@@ -284,9 +281,7 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn vote(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			T::CheckEnsure::ensure_valid(&who, Valid::Validated)?;
 			let account = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
-			//T::CheckEnsure::ensure_role(&who, Role::Voter)?;
 
 			// check limit
 			// "200" >= score holder can vote
@@ -319,9 +314,8 @@ pub mod pallet {
 			#[pallet::compact] index: FundIndex,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			T::CheckEnsure::ensure_valid(&who, Valid::Validated)?;
-
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
+
 			let now = <frame_system::Pallet<T>>::block_number();
 			ensure!(fund.end < now, Error::<T>::FundStillActive);
 
@@ -352,8 +346,6 @@ pub mod pallet {
 		#[pallet::weight(10_000)]
 		pub fn dissolve(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let reporter = ensure_signed(origin)?;
-			T::CheckEnsure::ensure_valid(&reporter, Valid::Validated)?;
-
 			let fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 
 			// Check that enough time has passed to remove from storage
@@ -388,8 +380,6 @@ pub mod pallet {
 		// block数が超える　and 金額が目標を超えたときのみ使える
 		pub fn dispense(origin: OriginFor<T>, index: FundIndex) -> DispatchResultWithPostInfo {
 			let caller = ensure_signed(origin)?;
-			T::CheckEnsure::ensure_valid(&caller, Valid::Validated)?;
-
 			let fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 
 			// Check that enough time has passed to remove from storage

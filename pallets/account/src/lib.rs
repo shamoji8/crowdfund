@@ -28,7 +28,6 @@ pub mod pallet {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Role {
 		SysMan,
-		Validater,
 		//Voter,
 		User,
 	}
@@ -53,6 +52,8 @@ pub mod pallet {
 		}
 	}
 
+	// erase  validator
+	/*
 	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Valid {
@@ -65,6 +66,7 @@ pub mod pallet {
 			Self::Unvalidated
 		}
 	}
+	*/
 
 	#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(bounds(), skip_type_params(T))]
@@ -72,7 +74,6 @@ pub mod pallet {
 		pub id: T::AccountId,
 		pub role: Role,
 		pub status: Status,
-		pub valid: Valid,
 		pub metadata: Vec<u8>,
 		pub score: i32,
 	}
@@ -119,7 +120,6 @@ pub mod pallet {
 					id: _a,
 					role: Role::SysMan,
 					status: Status::Active,
-					valid: Valid::Validated,
 					metadata: Vec::new(),
 					score: 100,
 				};
@@ -134,10 +134,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		AccountRegisted(T::AccountId),
 		SysmanRegisted(T::AccountId),
-		ValidatorRegisted(T::AccountId),
-		ValidatorRevoked(T::AccountId),
-		VoterRegisted(T::AccountId),
-		VoterRevoked(T::AccountId),
+		// VoterRegisted(T::AccountId),
+		// VoterRevoked(T::AccountId),
 		UserRevoked(T::AccountId),
 		AccountUpdated(T::AccountId),
 	}
@@ -172,7 +170,6 @@ pub mod pallet {
 							id: who.clone(),
 							role: Role::User,
 							status: Status::Active,
-							valid: Valid::Unvalidated,
 							metadata,
 							score: 100,
 						},
@@ -192,12 +189,10 @@ pub mod pallet {
 
 			Self::ensure_role(&who, Role::SysMan)?;
 			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
 
 			<AccountStorage<T>>::try_mutate(&sys, |acc| {
 				if let Some(account) = acc {
 					account.role = Role::SysMan;
-					account.valid = Valid::Validated;
 				} else {
 					return Err(Error::<T>::AccountNotRegistered)
 				}
@@ -217,130 +212,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(10_000)]
-		pub fn approve_validator(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			Self::ensure_role(&who, Role::SysMan)?;
-			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
-
-			<AccountStorage<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					account.role = Role::Validater;
-					account.valid = Valid::Validated;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-			<AccountRole<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					*account = Role::Validater;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-
-			Self::deposit_event(Event::ValidatorRegisted(who));
-			Ok(())
-		}
-
-		#[pallet::weight(10_000)]
-		pub fn revoke_validator(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			Self::ensure_role(&who, Role::SysMan)?;
-			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
-
-			Self::ensure_role(&val, Role::Validater)?;
-			Self::ensure_status(&val, Status::Active)?;
-			Self::ensure_valid(&val, Valid::Validated)?;
-
-			<AccountStorage<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					account.status = Status::Revoked;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-
-			Self::deposit_event(Event::ValidatorRevoked(who));
-			Ok(())
-		}
-
-		/*
-		#[pallet::weight(10_000)]
-		pub fn approve_voter(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			Self::ensure_role(&who, Role::Validater)?;
-			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
-
-			<AccountStorage<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					account.role = Role::Voter;
-					account.valid = Valid::Validated;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-			<AccountRole<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					*account = Role::Voter;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-
-			Self::deposit_event(Event::VoterRegisted(who));
-			Ok(())
-		}
-		*/
-
-		/*
-		#[pallet::weight(10_000)]
-		pub fn revoke_voter(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-
-			Self::ensure_role(&who, Role::Validater)?;
-			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
-
-			Self::ensure_role(&val, Role::Voter)?;
-			Self::ensure_status(&val, Status::Active)?;
-			Self::ensure_valid(&val, Valid::Validated)?;
-
-			<AccountStorage<T>>::try_mutate(&val, |acc| {
-				if let Some(account) = acc {
-					account.status = Status::Revoked;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-
-			Self::deposit_event(Event::VoterRevoked(who));
-			Ok(())
-		}
-		*/
-
-		#[pallet::weight(10_000)]
 		pub fn revoke_user(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			Self::ensure_role(&who, Role::Validater)?;
 			Self::ensure_status(&who, Status::Active)?;
-			Self::ensure_valid(&who, Valid::Validated)?;
 
 			Self::ensure_role(&val, Role::User)?;
 			Self::ensure_status(&val, Status::Active)?;
-			Self::ensure_valid(&val, Valid::Validated)?;
 
 			<AccountStorage<T>>::try_mutate(&val, |acc| {
 				if let Some(account) = acc {
@@ -377,7 +255,6 @@ pub mod pallet {
 pub trait EnsureAccount<T: Config> {
 	fn ensure_role(who: &T::AccountId, role: Role) -> DispatchResult;
 	fn ensure_status(who: &T::AccountId, status: Status) -> DispatchResult;
-	fn ensure_valid(who: &T::AccountId, valid: Valid) -> DispatchResult;
 	// fn check_sysman(who: &T::AccountId) -> DispatchResult;
 }
 
@@ -402,19 +279,6 @@ impl<T: Config> EnsureAccount<T> for Pallet<T> {
 				Ok(())
 			} else {
 				return Err(Error::<T>::NotExactStatus)?
-			}
-		} else {
-			return Err(Error::<T>::AccountNotRegistered)?
-		}
-	}
-
-	// check account's valid
-	fn ensure_valid(who: &T::AccountId, valid: Valid) -> DispatchResult {
-		if let Some(account) = <AccountStorage<T>>::get(who) {
-			if account.valid == valid {
-				Ok(())
-			} else {
-				return Err(Error::<T>::NotExactValid)?
 			}
 		} else {
 			return Err(Error::<T>::AccountNotRegistered)?
