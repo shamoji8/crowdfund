@@ -6,6 +6,7 @@ use frame_support::pallet_prelude::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
 use pallet_account::{/*EnsureAccount, Role, Valid,*/ AccountStorage};
+use pallet_fund_raising::{EnsureRaising};
 //use pallet_fund_raising::{Role, Status};
 //use scale_info::TypeInfo;
 
@@ -31,17 +32,21 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_account :: Config {
+	pub trait Config: frame_system::Config + pallet_account::Config + pallet_fund_raising::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type Currency: ReservableCurrency<Self::AccountId>;
 
 		type Fee: Get<BalanceOf<Self>>;
+
+		type CheckRate: EnsureRaising<Self>;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
+	pub type FundIndex = u32;
 
 	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> = <<T as Config>::Currency as Currency<AccountIdOf<T>>>::Balance;
@@ -91,6 +96,7 @@ pub mod pallet {
 		InvalidAccount,
 		InvalidScore,
 		AccountNotRegistered,
+		CannotEvaluate,
 	}
 
 	#[pallet::call]
@@ -120,15 +126,23 @@ pub mod pallet {
 		*/
 
 		#[pallet::weight(10_000)]
-		pub fn evaluation(origin: OriginFor<T>, val: AccountIdOf<T>, mut rate: i32) -> DispatchResult {
+		pub fn evaluation(origin: OriginFor<T>, index: FundIndex, val: AccountIdOf<T>, mut rate: i32) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let sender = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
 			let receiver = <AccountStorage<T>>::get(&val).ok_or(Error::<T>::InvalidAccount)?;
+
+			//let flag = true; とか使ってみたらよさげ？
+			// Todo
+			// ------------------------ contribution_check 期限・時間絶対に間違えているからチェック！ ----------------------//
+			// あと。sender, reciever　のどちらが支援者でどちらが事業者かの確認 //
+			// FundInfo の　creater からどちらか確認！//
+			T::CheckRate::contribution_check(&who, index)?;
+
 			let sender_score = sender.score;
 			let receiver_score = receiver.score;
+
 			//let receiver_score = Self::score_storage(&account).ok_or(Error::<T>::InvalidAccount)?;
 			//let sender_score = Self::score_storage(&who).ok_or(Error::<T>::InvalidAccount)?;
-
 
 			rate += 1;
 			ensure!(rate >= 1 && rate <= 6, Error::<T>::InvalidScore);
@@ -179,7 +193,7 @@ pub mod pallet {
 
 		// check other account score
 		#[pallet::weight(10_000)]
-		pub fn consution (origin: OriginFor<T>, val: AccountIdOf<T>) -> DispatchResult {
+		pub fn consution(origin: OriginFor<T>, val: AccountIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// check origin account is registered

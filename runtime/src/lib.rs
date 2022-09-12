@@ -286,6 +286,7 @@ impl pallet_rating::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type Fee = ConstU128<100>;
+	type CheckRate = FundRaising;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

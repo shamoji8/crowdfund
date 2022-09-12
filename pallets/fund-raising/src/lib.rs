@@ -76,6 +76,8 @@ pub mod pallet {
 	#[derive(Encode, Decode, Default, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct FundInfo<AccountId, Balance, BlockNumber> {
+		/// The account that creat
+		creater: AccountId,
 		/// The account that will recieve the funds if the campaign is successful
 		beneficiary: AccountId,
 		/// The amount of deposit placed
@@ -225,6 +227,7 @@ pub mod pallet {
 			<Funds<T>>::insert(
 				index,
 				FundInfo {
+					creater,
 					beneficiary,
 					deposit,
 					raised: Zero::zero(),
@@ -451,6 +454,27 @@ pub mod pallet {
 	}
 
 	/* ----------------------------------------------------------- helper function -------------------------------------------------------- */
+	pub trait EnsureRaising<T: Config> {
+		fn contribution_check(who: &T::AccountId, index: FundIndex) -> DispatchResult;
+	}
+
+	impl<T: Config> EnsureRaising<T> for Pallet<T> {
+		fn contribution_check(who: &T::AccountId, index: FundIndex) -> DispatchResult {
+			let fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
+
+			let now = <frame_system::Pallet<T>>::block_number();
+			if fund.end >= now {
+				return Err(Error::<T>::FundStillActive)?
+			} 
+
+			let balance = Self::contribution_get(index, &who);
+			if balance <= Zero::zero() {
+				return Err(Error::<T>::NoContribution)?
+			}
+			
+			Ok(())
+		}
+	}
 
 	impl<T: Config> Pallet<T> {
 		/// The account ID of the fund pot.
