@@ -77,7 +77,7 @@ pub mod pallet {
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct FundInfo<AccountId, Balance, BlockNumber> {
 		/// The account that creat
-		creater: AccountId,
+		pub creater: AccountId,
 		/// The account that will recieve the funds if the campaign is successful
 		beneficiary: AccountId,
 		/// The amount of deposit placed

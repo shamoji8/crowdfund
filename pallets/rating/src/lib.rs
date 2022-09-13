@@ -1,12 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // use frame_support::inherent::Vec;
-use scale_info::prelude::vec;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::{Currency, ReservableCurrency};
 use frame_system::pallet_prelude::*;
-use pallet_account::{/*EnsureAccount, Role, Valid,*/ AccountStorage};
-use pallet_fund_raising::{EnsureRaising};
+use pallet_account::AccountStorage;
+use pallet_fund_raising::{EnsureRaising, Funds};
+use scale_info::prelude::vec;
 //use pallet_fund_raising::{Role, Status};
 //use scale_info::TypeInfo;
 
@@ -32,7 +32,9 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_account::Config + pallet_fund_raising::Config {
+	pub trait Config:
+		frame_system::Config + pallet_account::Config + pallet_fund_raising::Config
+	{
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type Currency: ReservableCurrency<Self::AccountId>;
@@ -94,6 +96,7 @@ pub mod pallet {
 		AlreadySet,
 		NotEnoughAmount,
 		InvalidAccount,
+		InvalidIndex,
 		InvalidScore,
 		AccountNotRegistered,
 		CannotEvaluate,
@@ -126,17 +129,27 @@ pub mod pallet {
 		*/
 
 		#[pallet::weight(10_000)]
-		pub fn evaluation(origin: OriginFor<T>, index: FundIndex, val: AccountIdOf<T>, mut rate: i32) -> DispatchResult {
+		pub fn evaluation(
+			origin: OriginFor<T>,
+			index: FundIndex,
+			val: AccountIdOf<T>,
+			mut rate: i32,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let sender = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
 			let receiver = <AccountStorage<T>>::get(&val).ok_or(Error::<T>::InvalidAccount)?;
 
-			//let flag = true; とか使ってみたらよさげ？
 			// Todo
-			// ------------------------ contribution_check 期限・時間絶対に間違えているからチェック！ ----------------------//
-			// あと。sender, reciever　のどちらが支援者でどちらが事業者かの確認 //
-			// FundInfo の　creater からどちらか確認！//
+			// ------------------------ contribution_check ----------------------//
+			// after crowdfund_kill, you cannot evaluate (because you cannot check "Funds Storage")
 			T::CheckRate::contribution_check(&who, index)?;
+
+			let fund = <Funds<T>>::get(&index).ok_or(Error::<T>::InvalidIndex)?;
+
+			// check "sender == crater && receiver == contributer" or "sender == contributer && receiver == crater"
+			// checj sender != receiver
+			ensure!(&fund.creater != &who && &fund.creater != &val, Error::<T>::CannotEvaluate);
+			ensure!(&who != &val, Error::<T>::CannotEvaluate);
 
 			let sender_score = sender.score;
 			let receiver_score = receiver.score;
@@ -150,8 +163,8 @@ pub mod pallet {
 			// 1: -10, 2: -3, 3: -1, 4: 1, 5: 3, 6: 10
 			let psc = vec![-10, -3, -1, 1, 3, 10];
 
-
-			let mut calc = (receiver_score + psc[rate as usize]) + (psc[rate as usize] * sender_score) / 1000;
+			let mut calc =
+				(receiver_score + psc[rate as usize]) + (psc[rate as usize] * sender_score) / 1000;
 
 			if calc >= 1000 {
 				calc = 1000;
@@ -163,28 +176,10 @@ pub mod pallet {
 				if let Some(account) = acc {
 					account.score = calc;
 				} else {
-					return Err(Error::<T>::AccountNotRegistered)
+					return Err(Error::<T>::AccountNotRegistered);
 				}
 				Ok(())
 			})?;
-
-			/*
-			if calc > 0 && calc < 1000 {
-				<ScoreStorage<T>>::mutate(&account, |num| {
-					*num = Some(calc);
-				});
-			} else if calc >= 1000 {
-				<ScoreStorage<T>>::mutate(&account, |num| {
-					*num = Some(1000);
-				});
-				calc = 1000;
-			} else {
-				<ScoreStorage<T>>::mutate(&account, |num| {
-					*num = Some(1);
-				});
-				calc = 1;
-			}
-			*/
 
 			Self::deposit_event(Event::ScoreCheck(val, calc));
 
