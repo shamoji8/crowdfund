@@ -289,6 +289,11 @@ impl pallet_rating::Config for Runtime {
 	type CheckRate = FundRaising;
 }
 
+/// Configure the pallet-template in pallets/template.
+impl pallet_template::Config for Runtime {
+	type Event = Event;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -308,6 +313,7 @@ construct_runtime!(
 		FundRaising: pallet_fund_raising,
 		Account: pallet_account,
 		Rating: pallet_rating,
+		TemplateModule: pallet_template,
 	}
 );
 

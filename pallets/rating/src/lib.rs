@@ -147,7 +147,7 @@ pub mod pallet {
 			let fund = <Funds<T>>::get(&index).ok_or(Error::<T>::InvalidIndex)?;
 
 			// check "sender == crater && receiver == contributer" or "sender == contributer && receiver == crater"
-			// checj sender != receiver
+			// check sender != receiver
 			ensure!(&fund.creater != &who && &fund.creater != &val, Error::<T>::CannotEvaluate);
 			ensure!(&who != &val, Error::<T>::CannotEvaluate);
 
