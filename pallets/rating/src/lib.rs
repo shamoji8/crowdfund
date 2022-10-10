@@ -188,7 +188,7 @@ pub mod pallet {
 
 		// check other account score
 		#[pallet::weight(10_000)]
-		pub fn consution(origin: OriginFor<T>, val: AccountIdOf<T>) -> DispatchResult {
+		pub fn check_score(origin: OriginFor<T>, val: AccountIdOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// check origin account is registered
