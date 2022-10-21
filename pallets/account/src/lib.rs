@@ -121,7 +121,7 @@ pub mod pallet {
 					role: Role::SysMan,
 					status: Status::Active,
 					metadata: Vec::new(),
-					score: 100,
+					score: 500,
 				};
 				<AccountStorage<T>>::insert(a, account);
 				<AccountRole<T>>::insert(a, Role::SysMan);
