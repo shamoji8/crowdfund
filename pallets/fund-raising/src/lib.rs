@@ -93,6 +93,8 @@ pub mod pallet {
 		goal: Balance,
 		/// The total amount voted
 		totalvote: Balance,
+		/// whether fund gets enough votes
+		voteflag: bool,
 	}
 
 	#[pallet::storage]
@@ -235,6 +237,7 @@ pub mod pallet {
 					end,
 					goal,
 					totalvote: Zero::zero(),
+					voteflag: false,
 				},
 			);
 
@@ -254,6 +257,7 @@ pub mod pallet {
 			ensure!(value >= T::MinContribution::get(), Error::<T>::ContributionTooSmall);
 			let mut fund = Self::funds(index).ok_or(Error::<T>::InvalidIndex)?;
 			ensure!(fund.totalvote >= T::MinVotenum::get(), Error::<T>::CannotContribution);
+			ensure!(fund.voteflag == true, Error::<T>::CannotContribution);
 
 			// Make sure crowdfund has not ended
 			let now = <frame_system::Pallet<T>>::block_number();
@@ -303,6 +307,10 @@ pub mod pallet {
 			fund.totalvote += One::one();
 
 			Self::vote_put(index, &who);
+
+			if fund.totalvote >= T::MinVotenum::get() && fund.voteflag == false {
+				fund.voteflag = true;
+			}
 
 			Funds::<T>::insert(index, &fund);
 
