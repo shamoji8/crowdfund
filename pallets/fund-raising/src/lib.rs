@@ -76,6 +76,7 @@ pub mod pallet {
 	#[derive(Encode, Decode, Default, PartialEq, Eq, TypeInfo, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct FundInfo<AccountId, Balance, BlockNumber> {
+		fundnum: u32,
 		/// The account that creat
 		pub creater: AccountId,
 		/// The account that will recieve the funds if the campaign is successful
@@ -229,6 +230,7 @@ pub mod pallet {
 			<Funds<T>>::insert(
 				index,
 				FundInfo {
+					fundnum: index,
 					creater,
 					beneficiary,
 					deposit,
@@ -361,7 +363,7 @@ pub mod pallet {
 
 			// Check that enough time has passed to remove from storage
 			let now = <frame_system::Pallet<T>>::block_number();
-			ensure!(now > fund.end + T::RetirementPeriod::get(), Error::<T>::FundNotRetired);
+			//ensure!(now > fund.end + T::RetirementPeriod::get(), Error::<T>::FundNotRetired);
 
 			let account = Self::fund_account_id(index);
 

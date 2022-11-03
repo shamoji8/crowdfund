@@ -263,17 +263,24 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const SubmissionDeposit: u64 = 1000;
+	pub const MinContribution: u64= 10;
+	// 5
+	pub const RetirementPeriod: u32 = 30;
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_fund_raising::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type SubmissionDeposit = ConstU128<100>;
-	type MinContribution = ConstU128<200>;
+	type SubmissionDeposit = SubmissionDeposit;
+	type MinContribution = MinContribution;
 	// 1 / 20 = 5%
 	type FeePercent = ConstU128<20>;
 	type Percent = ConstU128<50>;
 	type MinVotenum = ConstU128<3>;
-	type RetirementPeriod = ConstU32<30>;
+	type RetirementPeriod = RetirementPeriod;
 	type VotingPeriod = ConstU32<30>;
 	type CheckEnsure = Account;
 }
