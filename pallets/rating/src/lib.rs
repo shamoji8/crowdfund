@@ -160,11 +160,11 @@ pub mod pallet {
 			rate += 1;
 			ensure!(rate >= 1 && rate <= 6, Error::<T>::InvalidScore);
 
-			// 1: -10, 2: -3, 3: -1, 4: 1, 5: 3, 6: 10
-			let psc = vec![-10, -3, -1, 1, 3, 10];
+			// 1: -3, 2: -2, 3: -1, 4: 1, 5: 2, 6: 3
+			let psc = vec![-3, -2, -1, 1, 2, 3];
 
 			let mut calc =
-				(receiver_score + psc[rate as usize]) + (psc[rate as usize] * sender_score) / 1000;
+				(receiver_score + psc[rate as usize]) + (psc[rate as usize] * sender_score) / 100;
 
 			if calc >= 1000 {
 				calc = 1000;
