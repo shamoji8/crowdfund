@@ -28,7 +28,7 @@ pub mod pallet {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub enum Role {
 		SysMan,
-		//Voter,
+		Voter,
 		User,
 	}
 
@@ -134,7 +134,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		AccountRegisted(T::AccountId),
 		SysmanRegisted(T::AccountId),
-		// VoterRegisted(T::AccountId),
+		VoterRegisted(T::AccountId),
 		// VoterRevoked(T::AccountId),
 		UserRevoked(T::AccountId),
 		AccountUpdated(T::AccountId),
@@ -208,6 +208,34 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::SysmanRegisted(who));
+			Ok(())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn approve_voter(origin: OriginFor<T>, sys: T::AccountId) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Self::ensure_role(&who, Role::SysMan)?;
+			Self::ensure_status(&who, Status::Active)?;
+
+			<AccountStorage<T>>::try_mutate(&sys, |acc| {
+				if let Some(account) = acc {
+					account.role = Role::Voter;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+			<AccountRole<T>>::try_mutate(&sys, |acc| {
+				if let Some(account) = acc {
+					*account = Role::Voter;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::VoterRegisted(who));
 			Ok(())
 		}
 
