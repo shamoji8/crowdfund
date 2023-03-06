@@ -52,6 +52,20 @@ pub mod pallet {
 		}
 	}
 
+	// score request
+	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub enum Flag {
+		On,
+		Off,
+	}
+
+	impl Default for Flag {
+		fn default() -> Self {
+			Self::Off
+		}
+	}
+
 	// erase  validator
 	/*
 	#[derive(Encode, Decode, Ord, PartialOrd, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -74,6 +88,7 @@ pub mod pallet {
 		pub id: T::AccountId,
 		pub role: Role,
 		pub status: Status,
+		pub flag: Flag,
 		pub metadata: Vec<u8>,
 		pub score: i32,
 	}
@@ -120,6 +135,7 @@ pub mod pallet {
 					id: _a,
 					role: Role::SysMan,
 					status: Status::Active,
+					flag: Flag::Off,
 					metadata: Vec::new(),
 					score: 500,
 				};
@@ -138,6 +154,8 @@ pub mod pallet {
 		// VoterRevoked(T::AccountId),
 		UserRevoked(T::AccountId),
 		AccountUpdated(T::AccountId),
+		VoterRequest(T::AccountId),
+		VoterRegistered(T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -155,11 +173,17 @@ pub mod pallet {
 		NotExactStatus,
 
 		NotExactValid,
+
+		NotEnoughScore,
+
+		NotRequestVoter,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(10_000)]
+
+		//　Todo: claim voter 追加！！！
 		pub fn register_account(origin: OriginFor<T>, metadata: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			match <AccountStorage<T>>::try_get(&who) {
@@ -170,6 +194,7 @@ pub mod pallet {
 							id: who.clone(),
 							role: Role::User,
 							status: Status::Active,
+							flag: Flag::Off,
 							metadata,
 							score: 100,
 						},
@@ -180,6 +205,56 @@ pub mod pallet {
 			}
 			// Return a successful DispatchResultWithPostInfo
 			Self::deposit_event(Event::AccountRegisted(who));
+			Ok(())
+		}
+
+		// voter request by score
+		#[pallet::weight(10_000)]
+		pub fn voter_request(origin: OriginFor<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Self::ensure_role(&who, Role::User)?;
+			Self::ensure_status(&who, Status::Active)?;
+
+			let account = <AccountStorage<T>>::get(&who).ok_or(Error::<T>::InvalidAccount)?;
+
+			ensure!(account.score >= 500, Error::<T>::NotEnoughScore);
+
+			<AccountStorage<T>>::try_mutate(&who, |acc| {
+				if let Some(account) = acc {
+					account.flag = Flag::On;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::VoterRequest(who));
+			Ok(())
+		}
+
+		// check voter_request by sysman
+		#[pallet::weight(10_000)]
+		pub fn votercheck_sysmen(origin: OriginFor<T>, user: T::AccountId) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			Self::ensure_role(&who, Role::SysMan)?;
+			Self::ensure_status(&who, Status::Active)?;
+
+			let account = <AccountStorage<T>>::get(&user).ok_or(Error::<T>::InvalidAccount)?;
+
+			ensure!(account.flag == Flag::On, Error::<T>::NotRequestVoter);
+
+			<AccountStorage<T>>::try_mutate(&user, |acc| {
+				if let Some(account) = acc {
+					account.role = Role::Voter;
+				} else {
+					return Err(Error::<T>::AccountNotRegistered)
+				}
+				Ok(())
+			})?;
+
+			Self::deposit_event(Event::VoterRegistered(user));
 			Ok(())
 		}
 
@@ -211,33 +286,35 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(10_000)]
-		pub fn approve_voter(origin: OriginFor<T>, sys: T::AccountId) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+		// erase approve_voter func
+		// due to creating votercheck_sysman func
+		// #[pallet::weight(10_000)]
+		// pub fn approve_voter(origin: OriginFor<T>, sys: T::AccountId) -> DispatchResult {
+		// 	let who = ensure_signed(origin)?;
 
-			Self::ensure_role(&who, Role::SysMan)?;
-			Self::ensure_status(&who, Status::Active)?;
+		// 	Self::ensure_role(&who, Role::SysMan)?;
+		// 	Self::ensure_status(&who, Status::Active)?;
 
-			<AccountStorage<T>>::try_mutate(&sys, |acc| {
-				if let Some(account) = acc {
-					account.role = Role::Voter;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
-			<AccountRole<T>>::try_mutate(&sys, |acc| {
-				if let Some(account) = acc {
-					*account = Role::Voter;
-				} else {
-					return Err(Error::<T>::AccountNotRegistered)
-				}
-				Ok(())
-			})?;
+		// 	<AccountStorage<T>>::try_mutate(&sys, |acc| {
+		// 		if let Some(account) = acc {
+		// 			account.role = Role::Voter;
+		// 		} else {
+		// 			return Err(Error::<T>::AccountNotRegistered)
+		// 		}
+		// 		Ok(())
+		// 	})?;
+		// 	<AccountRole<T>>::try_mutate(&sys, |acc| {
+		// 		if let Some(account) = acc {
+		// 			*account = Role::Voter;
+		// 		} else {
+		// 			return Err(Error::<T>::AccountNotRegistered)
+		// 		}
+		// 		Ok(())
+		// 	})?;
 
-			Self::deposit_event(Event::VoterRegisted(who));
-			Ok(())
-		}
+		// 	Self::deposit_event(Event::VoterRegisted(who));
+		// 	Ok(())
+		// }
 
 		#[pallet::weight(10_000)]
 		pub fn revoke_user(origin: OriginFor<T>, val: T::AccountId) -> DispatchResult {
